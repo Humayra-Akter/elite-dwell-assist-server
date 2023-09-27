@@ -13,8 +13,7 @@ app.use(express.json());
 //user: eliteAdmin
 //pass :kz7fQgCtjVgoPNYn
 
-const uri =
-  "mongodb+srv://eliteAdmin:kz7fQgCtjVgoPNYn@cluster0.guksi.mongodb.net/elite-dwell-assist?retryWrites=true&w=majority";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.guksi.mongodb.net/elite-dwell-assist?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
