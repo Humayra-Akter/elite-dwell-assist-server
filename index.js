@@ -1,15 +1,13 @@
 const express = require("express");
 const cors = require("cors");
 const { MongoClient } = require("mongodb");
-const bodyParser = require("body-parser");
-
+const http = require("http");
+const WebSocket = require("ws");
 const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
-app.use(bodyParser.json({ limit: "50mb" }));
-app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
 
 //user: eliteAdmin
 //pass :kz7fQgCtjVgoPNYn
@@ -21,10 +19,55 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
 });
 
+// WebSocket setup
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+wss.on("connection", (ws) => {
+  console.log("WebSocket connected");
+
+  ws.on("message", (message) => {
+    console.log(`Received: ${message}`);
+  });
+
+  ws.on("close", () => {
+    console.log("WebSocket disconnected");
+  });
+});
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+
+wss.on("connection", (ws, req) => {
+  console.log("WebSocket connected");
+  const maidId = parseMaidIdFromRequest(req);
+
+  ws.maidId = maidId;
+});
+
 async function run() {
   try {
     await client.connect();
+    const customerCollection = client
+      .db("elite-dwell-assist")
+      .collection("customer");
     const maidCollection = client.db("elite-dwell-assist").collection("maid");
+
+    const messageCollection = client
+      .db("elite-dwell-assist")
+      .collection("messages");
+
+    //customer post
+    app.post("/customer", async (req, res) => {
+      const customer = req.body;
+      const result = await customerCollection.insertOne(customer);
+      if (result.insertedCount === 1) {
+        res.send(result);
+        res.status(201).json({ message: "Customer added successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to add customer" });
+      }
+    });
 
     //maid post
     app.post("/maid", async (req, res) => {
@@ -38,6 +81,36 @@ async function run() {
       }
     });
 
+    app.post("/bookings", async (req, res) => {
+      try {
+        const booking = req.body;
+        const maidId = booking.maidId;
+        wss.clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            if (client.maidId === maidId) {
+              client.send(
+                JSON.stringify({
+                  type: "booking",
+                  message: "New booking created",
+                })
+              );
+            }
+          }
+        });
+        res.status(201).json({ message: "Booking created successfully" });
+      } catch (error) {
+        res.status(500).json({ message: "Failed to create booking" });
+      }
+    });
+
+    //customer get
+    app.get("/customer", async (req, res) => {
+      const query = {};
+      const cursor = customerCollection.find(query);
+      const customers = await cursor.toArray();
+      res.send(customers);
+    });
+
     //maid get
     app.get("/maid", async (req, res) => {
       const query = {};
@@ -45,12 +118,19 @@ async function run() {
       const maids = await cursor.toArray();
       res.send(maids);
     });
+
+    // maid individual get
+    app.get("/getMaidId/:bookingId", async (req, res) => {
+      const bookingId = req.params.bookingId;
+      const maidId = await fetchMaidId(bookingId);
+      res.json({ maidId });
+    });
   } finally {
   }
 }
 
 run().catch(console.dir);
 
-app.listen(port, () => {
-  console.log(`server running on ${port}`);
-});
+// app.listen(port, () => {
+//   console.log(`server running on ${port}`);
+// });
