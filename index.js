@@ -53,9 +53,9 @@ async function run() {
       .collection("customer");
     const maidCollection = client.db("elite-dwell-assist").collection("maid");
 
-    const messageCollection = client
+    const bookingCollection = client
       .db("elite-dwell-assist")
-      .collection("messages");
+      .collection("bookings");
 
     //customer post
     app.post("/customer", async (req, res) => {
@@ -80,27 +80,46 @@ async function run() {
         res.status(500).json({ message: "Failed to add maid" });
       }
     });
-
+    // bookings
     app.post("/bookings", async (req, res) => {
       try {
         const booking = req.body;
-        const maidId = booking.maidId;
+        const result = await bookingCollection.insertOne(booking);
+        if (result.insertedCount === 1) {
+          res.send(result);
+          res.status(201).json({ message: "Customer added successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to add customer" });
+        }
         wss.clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) {
-            if (client.maidId === maidId) {
-              client.send(
-                JSON.stringify({
-                  type: "booking",
-                  message: "New booking created",
-                })
-              );
-            }
+          if (
+            client.readyState === WebSocket.OPEN &&
+            client.maidId === booking.maidId
+          ) {
+            client.send(
+              JSON.stringify({
+                type: "booking",
+                message: `You have a new booking request from ${booking.customerName}`,
+              })
+            );
           }
         });
+        console.log(result);
         res.status(201).json({ message: "Booking created successfully" });
       } catch (error) {
+        console.error(error);
         res.status(500).json({ message: "Failed to create booking" });
       }
+    });
+    // bookings
+    app.get("/bookings", async (req, res) => {
+      const query = {
+        maidId: req.query.maidId,
+        customerName: req.query.customerName,
+      };
+      const cursor = bookingCollection.find(query);
+      const bookings = await cursor.toArray();
+      res.send(bookings);
     });
 
     //customer get
