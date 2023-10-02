@@ -86,31 +86,46 @@ async function run() {
         const booking = req.body;
         const result = await bookingCollection.insertOne(booking);
         if (result.insertedCount === 1) {
-          res.send(result);
-          res.status(201).json({ message: "Customer added successfully" });
+          wss.clients.forEach((client) => {
+            if (
+              client.readyState === WebSocket.OPEN &&
+              client.maidId === booking.maidId
+            ) {
+              client.send(
+                JSON.stringify({
+                  type: "booking",
+                  message: `You have a new booking request from ${booking.customerName}`,
+                })
+              );
+            }
+          });
+          console.log(result);
+          res.status(201).json({ message: "Booking created successfully" });
         } else {
-          res.status(500).json({ message: "Failed to add customer" });
+          res.status(500).json({ message: "Failed to create booking" });
         }
-        wss.clients.forEach((client) => {
-          if (
-            client.readyState === WebSocket.OPEN &&
-            client.maidId === booking.maidId
-          ) {
-            client.send(
-              JSON.stringify({
-                type: "booking",
-                message: `You have a new booking request from ${booking.customerName}`,
-              })
-            );
-          }
-        });
-        console.log(result);
-        res.status(201).json({ message: "Booking created successfully" });
       } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Failed to create booking" });
       }
     });
+
+    // individual booking information by maidId
+    app.get("/bookings/:maidId", async (req, res) => {
+      try {
+        const maidId = req.params.maidId;
+        const query = { maidId };
+        const cursor = bookingCollection.find(query);
+        const bookings = await cursor.toArray();
+        res.send(bookings);
+      } catch (error) {
+        console.error(error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch individual booking information" });
+      }
+    });
+
     // bookings
     app.get("/bookings", async (req, res) => {
       const query = {
@@ -120,6 +135,22 @@ async function run() {
       const cursor = bookingCollection.find(query);
       const bookings = await cursor.toArray();
       res.send(bookings);
+    });
+
+    const maidNotifications = {}; // Create an object to store notifications for each maid
+
+    wss.on("connection", (ws, req) => {
+      console.log("WebSocket connected");
+      const maidId = parseMaidIdFromRequest(req);
+      ws.maidId = maidId;
+      maidNotifications[maidId] = [];
+      // Send existing notifications to the maid when they connect
+      ws.send(
+        JSON.stringify({
+          type: "notifications",
+          data: maidNotifications[maidId],
+        })
+      );
     });
 
     //customer get
