@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient } = require("mongodb");
 const http = require("http");
+const { ObjectId } = require("mongodb");
 const WebSocket = require("ws");
 const app = express();
 const port = process.env.PORT || 5000;
@@ -19,31 +20,31 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
 });
 
-// WebSocket setup
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+// // WebSocket setup
+// const server = http.createServer(app);
+// const wss = new WebSocket.Server({ server });
 
-wss.on("connection", (ws) => {
-  console.log("WebSocket connected");
+// wss.on("connection", (ws) => {
+//   console.log("WebSocket connected");
 
-  ws.on("message", (message) => {
-    console.log(`Received: ${message}`);
-  });
+//   ws.on("message", (message) => {
+//     console.log(`Received: ${message}`);
+//   });
 
-  ws.on("close", () => {
-    console.log("WebSocket disconnected");
-  });
-});
-server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+//   ws.on("close", () => {
+//     console.log("WebSocket disconnected");
+//   });
+// });
+// server.listen(port, () => {
+//   console.log(`Server running on port ${port}`);
+// });
 
-wss.on("connection", (ws, req) => {
-  console.log("WebSocket connected");
-  const maidId = parseMaidIdFromRequest(req);
+// wss.on("connection", (ws, req) => {
+//   console.log("WebSocket connected");
+//   const maidId = parseMaidIdFromRequest(req);
 
-  ws.maidId = maidId;
-});
+//   ws.maidId = maidId;
+// });
 
 async function run() {
   try {
@@ -86,19 +87,19 @@ async function run() {
         const booking = req.body;
         const result = await bookingCollection.insertOne(booking);
         if (result.insertedCount === 1) {
-          wss.clients.forEach((client) => {
-            if (
-              client.readyState === WebSocket.OPEN &&
-              client.maidId === booking.maidId
-            ) {
-              client.send(
-                JSON.stringify({
-                  type: "booking",
-                  message: `You have a new booking request from ${booking.customerName}`,
-                })
-              );
-            }
-          });
+          // wss.clients.forEach((client) => {
+          //   if (
+          //     client.readyState === WebSocket.OPEN &&
+          //     client.maidId === booking.maidId
+          //   ) {
+          //     client.send(
+          //       JSON.stringify({
+          //         type: "booking",
+          //         message: `You have a new booking request from ${booking.customerName}`,
+          //       })
+          //     );
+          //   }
+          // });
           console.log(result);
           res.status(201).json({ message: "Booking created successfully" });
         } else {
@@ -110,21 +111,42 @@ async function run() {
       }
     });
 
-    // individual booking information by maidId
-    app.get("/bookings/:maidId", async (req, res) => {
+    // ...
+
+    // individual booking information by _id
+    app.get("/bookings/:id", async (req, res) => {
       try {
-        const maidId = req.params.maidId;
-        const query = { maidId };
-        const cursor = bookingCollection.find(query);
-        const bookings = await cursor.toArray();
-        res.send(bookings);
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({ message: "Invalid ObjectId" });
+        }
+        const query = { _id: new ObjectId(id) };
+        const booking = await bookingCollection.findOne(query);
+        if (!booking) {
+          return res.status(404).json({ message: "Booking not found" });
+        }
+        res.json(booking);
       } catch (error) {
         console.error(error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch individual booking information" });
+        res.status(500).json({ message: "Internal server error" });
       }
     });
+
+    // individual booking information by maidId
+    // app.get("/bookings/:maidId", async (req, res) => {
+    //   try {
+    //     const maidId = req.params.maidId;
+    //     const query = { maidId };
+    //     const cursor = bookingCollection.find(query);
+    //     const bookings = await cursor.toArray();
+    //     res.send(bookings);
+    //   } catch (error) {
+    //     console.error(error);
+    //     res
+    //       .status(500)
+    //       .json({ message: "Failed to fetch individual booking information" });
+    //   }
+    // });
 
     // bookings
     app.get("/bookings", async (req, res) => {
@@ -137,21 +159,21 @@ async function run() {
       res.send(bookings);
     });
 
-    const maidNotifications = {}; // Create an object to store notifications for each maid
+    // const maidNotifications = {}; // Create an object to store notifications for each maid
 
-    wss.on("connection", (ws, req) => {
-      console.log("WebSocket connected");
-      const maidId = parseMaidIdFromRequest(req);
-      ws.maidId = maidId;
-      maidNotifications[maidId] = [];
-      // Send existing notifications to the maid when they connect
-      ws.send(
-        JSON.stringify({
-          type: "notifications",
-          data: maidNotifications[maidId],
-        })
-      );
-    });
+    // wss.on("connection", (ws, req) => {
+    //   console.log("WebSocket connected");
+    //   const maidId = parseMaidIdFromRequest(req);
+    //   ws.maidId = maidId;
+    //   maidNotifications[maidId] = [];
+    //   // Send existing notifications to the maid when they connect
+    //   ws.send(
+    //     JSON.stringify({
+    //       type: "notifications",
+    //       data: maidNotifications[maidId],
+    //     })
+    //   );
+    // });
 
     //customer get
     app.get("/customer", async (req, res) => {
@@ -181,6 +203,6 @@ async function run() {
 
 run().catch(console.dir);
 
-// app.listen(port, () => {
-//   console.log(`server running on ${port}`);
-// });
+app.listen(port, () => {
+  console.log(`server running on ${port}`);
+});
