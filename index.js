@@ -132,21 +132,6 @@ async function run() {
       }
     });
 
-    // individual booking information by maidId
-    // app.get("/bookings/:maidId", async (req, res) => {
-    //   try {
-    //     const maidId = req.params.maidId;
-    //     const query = { maidId };
-    //     const cursor = bookingCollection.find(query);
-    //     const bookings = await cursor.toArray();
-    //     res.send(bookings);
-    //   } catch (error) {
-    //     console.error(error);
-    //     res
-    //       .status(500)
-    //       .json({ message: "Failed to fetch individual booking information" });
-    //   }
-    // });
 
     // bookings
     app.get("/bookings", async (req, res) => {
@@ -159,22 +144,7 @@ async function run() {
       res.send(bookings);
     });
 
-    // const maidNotifications = {}; // Create an object to store notifications for each maid
-
-    // wss.on("connection", (ws, req) => {
-    //   console.log("WebSocket connected");
-    //   const maidId = parseMaidIdFromRequest(req);
-    //   ws.maidId = maidId;
-    //   maidNotifications[maidId] = [];
-    //   // Send existing notifications to the maid when they connect
-    //   ws.send(
-    //     JSON.stringify({
-    //       type: "notifications",
-    //       data: maidNotifications[maidId],
-    //     })
-    //   );
-    // });
-
+    
     //customer get
     app.get("/customer", async (req, res) => {
       const query = {};
