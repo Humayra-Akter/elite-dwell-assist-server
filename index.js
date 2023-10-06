@@ -52,11 +52,22 @@ async function run() {
     const customerCollection = client
       .db("elite-dwell-assist")
       .collection("customer");
+    const userCollection = client.db("elite-dwell-assist").collection("user");
     const maidCollection = client.db("elite-dwell-assist").collection("maid");
-
     const bookingCollection = client
       .db("elite-dwell-assist")
       .collection("bookings");
+
+    // user post
+    app.post("/user", async (req, res) => {
+      const user = req.body;
+      const result = await userCollection.insertOne(user);
+      if (result.insertedCount === 1) {
+        res.status(201).json({ message: "User added successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to add user" });
+      }
+    });
 
     //customer post
     app.post("/customer", async (req, res) => {
@@ -132,7 +143,6 @@ async function run() {
       }
     });
 
-
     // bookings
     app.get("/bookings", async (req, res) => {
       const query = {
@@ -144,7 +154,14 @@ async function run() {
       res.send(bookings);
     });
 
-    
+    //user get
+    app.get("/user", async (req, res) => {
+      const query = {};
+      const cursor = userCollection.find(query);
+      const users = await cursor.toArray();
+      res.send(users);
+    });
+
     //customer get
     app.get("/customer", async (req, res) => {
       const query = {};
