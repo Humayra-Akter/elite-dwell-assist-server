@@ -54,6 +54,9 @@ async function run() {
       .collection("customer");
     const userCollection = client.db("elite-dwell-assist").collection("user");
     const maidCollection = client.db("elite-dwell-assist").collection("maid");
+    const perDayMaidBookingCollection = client
+      .db("elite-dwell-assist")
+      .collection("perDayMaidBooking");
     const bookingCollection = client
       .db("elite-dwell-assist")
       .collection("bookings");
@@ -92,25 +95,29 @@ async function run() {
         res.status(500).json({ message: "Failed to add maid" });
       }
     });
+
+    // perDayMaidBookings
+    app.post("/perDayMaidBookings", async (req, res) => {
+      try {
+        const bookingData = req.body;
+        const result = await perDayMaidBookingCollection.insertOne(bookingData);
+
+        if (result.insertedCount === 1) {
+          res.status(201).json({ message: "Booking saved successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to save booking" });
+        }
+      } catch (error) {
+        console.error("Booking error:", error);
+      }
+    });
+
     // bookings
     app.post("/bookings", async (req, res) => {
       try {
         const booking = req.body;
         const result = await bookingCollection.insertOne(booking);
         if (result.insertedCount === 1) {
-          // wss.clients.forEach((client) => {
-          //   if (
-          //     client.readyState === WebSocket.OPEN &&
-          //     client.maidId === booking.maidId
-          //   ) {
-          //     client.send(
-          //       JSON.stringify({
-          //         type: "booking",
-          //         message: `You have a new booking request from ${booking.customerName}`,
-          //       })
-          //     );
-          //   }
-          // });
           console.log(result);
           res.status(201).json({ message: "Booking created successfully" });
         } else {
