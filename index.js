@@ -10,9 +10,6 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-//user: eliteAdmin
-//pass :kz7fQgCtjVgoPNYn
-
 const uri =
   "mongodb+srv://eliteAdmin:kz7fQgCtjVgoPNYn@cluster0.guksi.mongodb.net/elite-dwell-assist?retryWrites=true&w=majority";
 const client = new MongoClient(uri, {
@@ -20,38 +17,13 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
 });
 
-// // WebSocket setup
-// const server = http.createServer(app);
-// const wss = new WebSocket.Server({ server });
-
-// wss.on("connection", (ws) => {
-//   console.log("WebSocket connected");
-
-//   ws.on("message", (message) => {
-//     console.log(`Received: ${message}`);
-//   });
-
-//   ws.on("close", () => {
-//     console.log("WebSocket disconnected");
-//   });
-// });
-// server.listen(port, () => {
-//   console.log(`Server running on port ${port}`);
-// });
-
-// wss.on("connection", (ws, req) => {
-//   console.log("WebSocket connected");
-//   const maidId = parseMaidIdFromRequest(req);
-
-//   ws.maidId = maidId;
-// });
-
 async function run() {
   try {
     await client.connect();
     const customerCollection = client
       .db("elite-dwell-assist")
       .collection("customer");
+    const adminCollection = client.db("elite-dwell-assist").collection("admin");
     const userCollection = client.db("elite-dwell-assist").collection("user");
     const maidCollection = client.db("elite-dwell-assist").collection("maid");
     const perDayMaidBookingCollection = client
@@ -60,6 +32,17 @@ async function run() {
     const bookingCollection = client
       .db("elite-dwell-assist")
       .collection("bookings");
+
+    // admin post
+    app.post("/admin", async (req, res) => {
+      const admin = req.body;
+      const result = await adminCollection.insertOne(admin);
+      if (result.insertedCount === 1) {
+        res.status(201).json({ message: "Admin added successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to add admin" });
+      }
+    });
 
     // user post
     app.post("/user", async (req, res) => {
@@ -150,6 +133,16 @@ async function run() {
       }
     });
 
+    // perDayMaidBookings
+    app.get("/perDayMaidBookings", async (req, res) => {
+      const query = {
+        maidId: req.query.maidId,
+        customerName: req.query.customerName,
+      };
+      const cursor = perDayMaidBookingCollection.find(query);
+      const bookings = await cursor.toArray();
+      res.send(bookings);
+    });
     // bookings
     app.get("/bookings", async (req, res) => {
       const query = {
@@ -159,6 +152,14 @@ async function run() {
       const cursor = bookingCollection.find(query);
       const bookings = await cursor.toArray();
       res.send(bookings);
+    });
+
+    //admin get
+    app.get("/admin", async (req, res) => {
+      const query = {};
+      const cursor = adminCollection.find(query);
+      const admins = await cursor.toArray();
+      res.send(admins);
     });
 
     //user get
