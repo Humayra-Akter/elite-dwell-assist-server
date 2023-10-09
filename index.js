@@ -26,6 +26,9 @@ async function run() {
     const adminCollection = client.db("elite-dwell-assist").collection("admin");
     const userCollection = client.db("elite-dwell-assist").collection("user");
     const maidCollection = client.db("elite-dwell-assist").collection("maid");
+    const maidSearchPostCollection = client
+      .db("elite-dwell-assist")
+      .collection("maidSearchPost");
     const perDayMaidBookingCollection = client
       .db("elite-dwell-assist")
       .collection("perDayMaidBooking");
@@ -79,6 +82,21 @@ async function run() {
       }
     });
 
+    // maidSearchPost
+    app.post("/maidSearchPost", async (req, res) => {
+      try {
+        const postData = req.body;
+        const result = await maidSearchPostCollection.insertOne(postData);
+
+        if (result.insertedCount === 1) {
+          res.status(201).json({ message: "Booking saved successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to save booking" });
+        }
+      } catch (error) {
+        console.error("Booking error:", error);
+      }
+    });
     // perDayMaidBookings
     app.post("/perDayMaidBookings", async (req, res) => {
       try {
@@ -112,21 +130,18 @@ async function run() {
       }
     });
 
-    // ...
-
-    // individual booking information by _id
-    app.get("/bookings/:id", async (req, res) => {
+    // individual booking information by email
+    app.get("/bookings/:email", async (req, res) => {
       try {
-        const id = req.params.id;
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).json({ message: "Invalid ObjectId" });
+        const maidEmail = req.params.email;
+        const query = { maidEmail };
+        const bookings = await bookingCollection.find(query).toArray();
+        if (!bookings || bookings.length === 0) {
+          return res
+            .status(404)
+            .json({ message: "No bookings found for the maid" });
         }
-        const query = { _id: new ObjectId(id) };
-        const booking = await bookingCollection.findOne(query);
-        if (!booking) {
-          return res.status(404).json({ message: "Booking not found" });
-        }
-        res.json(booking);
+        res.json(bookings);
       } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Internal server error" });
@@ -145,11 +160,16 @@ async function run() {
     });
     // bookings
     app.get("/bookings", async (req, res) => {
-      const query = {
-        maidId: req.query.maidId,
-        customerName: req.query.customerName,
-      };
+      const query = {};
       const cursor = bookingCollection.find(query);
+      const bookings = await cursor.toArray();
+      res.send(bookings);
+    });
+
+    // maidSearchPost
+    app.get("/maidSearchPost", async (req, res) => {
+      const query = {};
+      const cursor = maidSearchPostCollection.find(query);
       const bookings = await cursor.toArray();
       res.send(bookings);
     });
