@@ -32,6 +32,9 @@ async function run() {
     const perDayMaidBookingCollection = client
       .db("elite-dwell-assist")
       .collection("perDayMaidBooking");
+    const tvBillCollection = client
+      .db("elite-dwell-assist")
+      .collection("tvBill");
     const bookingCollection = client
       .db("elite-dwell-assist")
       .collection("bookings");
@@ -97,11 +100,28 @@ async function run() {
         console.error("Booking error:", error);
       }
     });
+
     // perDayMaidBookings
     app.post("/perDayMaidBookings", async (req, res) => {
       try {
         const bookingData = req.body;
         const result = await perDayMaidBookingCollection.insertOne(bookingData);
+
+        if (result.insertedCount === 1) {
+          res.status(201).json({ message: "Booking saved successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to save booking" });
+        }
+      } catch (error) {
+        console.error("Booking error:", error);
+      }
+    });
+
+    // tvBill
+    app.post("/tvBill", async (req, res) => {
+      try {
+        const bookingData = req.body;
+        const result = await tvBillCollection.insertOne(bookingData);
 
         if (result.insertedCount === 1) {
           res.status(201).json({ message: "Booking saved successfully" });
