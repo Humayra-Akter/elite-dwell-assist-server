@@ -26,6 +26,9 @@ async function run() {
     const adminCollection = client.db("elite-dwell-assist").collection("admin");
     const userCollection = client.db("elite-dwell-assist").collection("user");
     const maidCollection = client.db("elite-dwell-assist").collection("maid");
+    const driverCollection = client
+      .db("elite-dwell-assist")
+      .collection("driver");
     const maidSearchPostCollection = client
       .db("elite-dwell-assist")
       .collection("maidSearchPost");
@@ -56,6 +59,17 @@ async function run() {
       const result = await userCollection.insertOne(user);
       if (result.insertedCount === 1) {
         res.status(201).json({ message: "User added successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to add user" });
+      }
+    });
+
+    // driver post
+    app.post("/driver", async (req, res) => {
+      const driver = req.body;
+      const result = await driverCollection.insertOne(driver);
+      if (result.insertedCount === 1) {
+        res.status(201).json({ message: "Driver added successfully" });
       } else {
         res.status(500).json({ message: "Failed to add user" });
       }
@@ -224,6 +238,14 @@ async function run() {
       const cursor = maidCollection.find(query);
       const maids = await cursor.toArray();
       res.send(maids);
+    });
+
+    //driver get
+    app.get("/driver", async (req, res) => {
+      const query = {};
+      const cursor = driverCollection.find(query);
+      const drivers = await cursor.toArray();
+      res.send(drivers);
     });
 
     // maid individual get
