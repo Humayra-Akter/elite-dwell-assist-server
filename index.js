@@ -26,6 +26,9 @@ async function run() {
     const adminCollection = client.db("elite-dwell-assist").collection("admin");
     const userCollection = client.db("elite-dwell-assist").collection("user");
     const maidCollection = client.db("elite-dwell-assist").collection("maid");
+    const customerBookedCollection = client
+      .db("elite-dwell-assist")
+      .collection("customerBooking");
     const driverCollection = client
       .db("elite-dwell-assist")
       .collection("driver");
@@ -164,6 +167,22 @@ async function run() {
       }
     });
 
+    // bookings from maid to customer
+    app.post("/customerBooked", async (req, res) => {
+      try {
+        const booking = req.body;
+        const result = await customerBookedCollection.insertOne(booking);
+
+        if (result.insertedCount === 1) {
+          res.status(201).json({ message: "Booking created successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to create booking" });
+        }
+      } catch (error) {
+        res.status(500).json({ message: "Failed to create booking" });
+      }
+    });
+
     // individual booking information by email
     app.get("/bookings/:email", async (req, res) => {
       try {
@@ -174,6 +193,24 @@ async function run() {
           return res
             .status(404)
             .json({ message: "No bookings found for the maid" });
+        }
+        res.json(bookings);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // individual booking information by email requested by maid to customer
+    app.get("/customerBooked/:email", async (req, res) => {
+      try {
+        const customerEmail = req.params.email;
+        const query = { customerEmail };
+        const bookings = await customerBookedCollection.find(query).toArray();
+        if (!bookings || bookings.length === 0) {
+          return res
+            .status(404)
+            .json({ message: "No bookings found for the customer" });
         }
         res.json(bookings);
       } catch (error) {
@@ -196,6 +233,14 @@ async function run() {
     app.get("/bookings", async (req, res) => {
       const query = {};
       const cursor = bookingCollection.find(query);
+      const bookings = await cursor.toArray();
+      res.send(bookings);
+    });
+
+    // bookings from maid to customer
+    app.get("/customerBooked", async (req, res) => {
+      const query = {};
+      const cursor = customerBookedCollection.find(query);
       const bookings = await cursor.toArray();
       res.send(bookings);
     });
