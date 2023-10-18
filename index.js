@@ -1,9 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { MongoClient } = require("mongodb");
-const http = require("http");
 const { ObjectId } = require("mongodb");
-const WebSocket = require("ws");
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -172,14 +170,13 @@ async function run() {
       try {
         const booking = req.body;
         const result = await customerBookedCollection.insertOne(booking);
-
         if (result.insertedCount === 1) {
           res.status(201).json({ message: "Booking created successfully" });
         } else {
           res.status(500).json({ message: "Failed to create booking" });
         }
       } catch (error) {
-        res.status(500).json({ message: "Failed to create booking" });
+        res.status(500).json({ message: "Internal server error" });
       }
     });
 
@@ -213,6 +210,21 @@ async function run() {
             .json({ message: "No bookings found for the customer" });
         }
         res.json(bookings);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+    // individual maid information by email
+    app.get("/maid/:email", async (req, res) => {
+      try {
+        const maidEmail = req.params.email;
+        const query = { email: maidEmail };
+        const maid = await maidCollection.findOne(query);
+        if (!maid) {
+          return res.status(404).json({ message: "Maid not found" });
+        }
+        res.json(maid);
       } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Internal server error" });
