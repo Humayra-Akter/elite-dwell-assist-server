@@ -24,6 +24,12 @@ async function run() {
     const adminCollection = client.db("elite-dwell-assist").collection("admin");
     const userCollection = client.db("elite-dwell-assist").collection("user");
     const maidCollection = client.db("elite-dwell-assist").collection("maid");
+    const acknowledgeBookingCollection = client
+      .db("elite-dwell-assist")
+      .collection("maidPerDayAcknowledgeBooking");
+    const reviewCollection = client
+      .db("elite-dwell-assist")
+      .collection("review");
     const customerBookedCollection = client
       .db("elite-dwell-assist")
       .collection("customerBooking");
@@ -100,6 +106,29 @@ async function run() {
       }
     });
 
+    //maid per day acknowledgeBooking post
+    app.post("/acknowledgeBooking", async (req, res) => {
+      const bookingId = req.body;
+      const result = await acknowledgeBookingCollection.insertOne(bookingId);
+      if (result.insertedCount === 1) {
+        const deleteResult = await perDayMaidBookingCollection.deleteOne({
+          _id: booking._id,
+        });
+        res.send(result);
+        res.status(201).json({ message: "Maid added successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to add maid" });
+      }
+    });
+
+    //acknowledgeBooking get
+    app.get("/acknowledgeBooking", async (req, res) => {
+      const query = {};
+      const cursor = acknowledgeBookingCollection.find(query);
+      const acknowledgeBooking = await cursor.toArray();
+      res.send(acknowledgeBooking);
+    });
+
     // maidSearchPost
     app.post("/maidSearchPost", async (req, res) => {
       try {
@@ -148,10 +177,51 @@ async function run() {
       }
     });
 
+    //review post
+    app.post("/reviews", async (req, res) => {
+      try {
+        const { userEmail, maidId, rating, reviewText } = req.body;
+        const existingReview = await reviewCollection.findOne({
+          userEmail,
+          maidId,
+        });
+        if (existingReview) {
+          res
+            .status(400)
+            .json({ message: "You have already reviewed this maid." });
+          return;
+        }
+        const result = await reviewCollection.insertOne({
+          userEmail,
+          maidId,
+          rating,
+          reviewText,
+        });
+
+        if (result.insertedCount === 1) {
+          res.status(201).json({ message: "Review submitted successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to submit review" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to submit review" });
+      }
+    });
+
+    //review get
+    app.get("/reviews", async (req, res) => {
+      const query = {};
+      const cursor = reviewCollection.find(query);
+      const reviews = await cursor.toArray();
+      res.send(reviews);
+    });
+
     // bookings
     app.post("/bookings", async (req, res) => {
       try {
         const booking = req.body;
+        booking.createdDate = new Date();
         const result = await bookingCollection.insertOne(booking);
         if (result.insertedCount === 1) {
           console.log(result);
@@ -162,6 +232,23 @@ async function run() {
       } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Failed to create booking" });
+      }
+    });
+
+    // Delete a booking by ID
+    app.delete("/bookings/:id", async (req, res) => {
+      try {
+        const bookingId = req.params.id;
+        const objectId = new ObjectId(bookingId);
+        const result = await bookingCollection.deleteOne({ _id: objectId });
+        if (result.deletedCount === 1) {
+          res.json({ message: "Booking deleted successfully" });
+        } else {
+          res.status(404).json({ message: "Booking not found" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
       }
     });
 
@@ -215,6 +302,7 @@ async function run() {
         res.status(500).json({ message: "Internal server error" });
       }
     });
+
     // individual maid information by email
     app.get("/maid/:email", async (req, res) => {
       try {
