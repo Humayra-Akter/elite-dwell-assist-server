@@ -177,6 +177,14 @@ async function run() {
       }
     });
 
+    //tvBill get
+    app.get("/tvBill", async (req, res) => {
+      const query = {};
+      const cursor = tvBillCollection.find(query);
+      const tvBill = await cursor.toArray();
+      res.send(tvBill);
+    });f
+
     //review post
     app.post("/reviews", async (req, res) => {
       try {
