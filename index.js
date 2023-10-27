@@ -24,6 +24,12 @@ async function run() {
     const adminCollection = client.db("elite-dwell-assist").collection("admin");
     const userCollection = client.db("elite-dwell-assist").collection("user");
     const maidCollection = client.db("elite-dwell-assist").collection("maid");
+    const driverCollection = client
+      .db("elite-dwell-assist")
+      .collection("driver");
+    const babysitterCollection = client
+      .db("elite-dwell-assist")
+      .collection("babysitter");
     const acknowledgeBookingCollection = client
       .db("elite-dwell-assist")
       .collection("maidPerDayAcknowledgeBooking");
@@ -33,9 +39,7 @@ async function run() {
     const customerBookedCollection = client
       .db("elite-dwell-assist")
       .collection("customerBooking");
-    const driverCollection = client
-      .db("elite-dwell-assist")
-      .collection("driver");
+    
     const maidSearchPostCollection = client
       .db("elite-dwell-assist")
       .collection("maidSearchPost");
@@ -48,6 +52,9 @@ async function run() {
     const bookingCollection = client
       .db("elite-dwell-assist")
       .collection("bookings");
+    const driverBookingsCollection = client
+      .db("elite-dwell-assist")
+      .collection("driverBookings");
 
     // admin post
     app.post("/admin", async (req, res) => {
@@ -104,6 +111,25 @@ async function run() {
       } else {
         res.status(500).json({ message: "Failed to add maid" });
       }
+    });
+
+    // babysitter post
+    app.post("/babysitter", async (req, res) => {
+      const babysitter = req.body;
+      const result = await babysitterCollection.insertOne(babysitter);
+      if (result.insertedCount === 1) {
+        res.status(201).json({ message: "Babysitter added successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to add babysitter" });
+      }
+    });
+
+    //babysitter get
+    app.get("/babysitter", async (req, res) => {
+      const query = {};
+      const cursor = babysitterCollection.find(query);
+      const babysitters = await cursor.toArray();
+      res.send(babysitters);
     });
 
     //maid per day acknowledgeBooking post
@@ -183,7 +209,7 @@ async function run() {
       const cursor = tvBillCollection.find(query);
       const tvBill = await cursor.toArray();
       res.send(tvBill);
-    });f
+    });
 
     //review post
     app.post("/reviews", async (req, res) => {
@@ -243,12 +269,49 @@ async function run() {
       }
     });
 
+    // driverBookings
+    app.post("/driverBookings", async (req, res) => {
+      try {
+        const booking = req.body;
+        booking.createdDate = new Date();
+        const result = await driverBookingsCollection.insertOne(booking);
+        if (result.insertedCount === 1) {
+          console.log(result);
+          res.status(201).json({ message: "Booking created successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to create booking" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to create booking" });
+      }
+    });
+
     // Delete a booking by ID
     app.delete("/bookings/:id", async (req, res) => {
       try {
         const bookingId = req.params.id;
         const objectId = new ObjectId(bookingId);
         const result = await bookingCollection.deleteOne({ _id: objectId });
+        if (result.deletedCount === 1) {
+          res.json({ message: "Booking deleted successfully" });
+        } else {
+          res.status(404).json({ message: "Booking not found" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // Delete a driverBookings by ID
+    app.delete("/driverBookings/:id", async (req, res) => {
+      try {
+        const bookingId = req.params.id;
+        const objectId = new ObjectId(bookingId);
+        const result = await driverBookingsCollection.deleteOne({
+          _id: objectId,
+        });
         if (result.deletedCount === 1) {
           res.json({ message: "Booking deleted successfully" });
         } else {
@@ -281,6 +344,24 @@ async function run() {
         const maidEmail = req.params.email;
         const query = { maidEmail };
         const bookings = await bookingCollection.find(query).toArray();
+        if (!bookings || bookings.length === 0) {
+          return res
+            .status(404)
+            .json({ message: "No bookings found for the maid" });
+        }
+        res.json(bookings);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // individual driverBookings information by email
+    app.get("/driverBookings/:email", async (req, res) => {
+      try {
+        const maidEmail = req.params.email;
+        const query = { maidEmail };
+        const bookings = await driverBookingsCollection.find(query).toArray();
         if (!bookings || bookings.length === 0) {
           return res
             .status(404)
@@ -341,6 +422,14 @@ async function run() {
     app.get("/bookings", async (req, res) => {
       const query = {};
       const cursor = bookingCollection.find(query);
+      const bookings = await cursor.toArray();
+      res.send(bookings);
+    });
+
+    // driverBookings
+    app.get("/driverBookings", async (req, res) => {
+      const query = {};
+      const cursor = driverBookingsCollection.find(query);
       const bookings = await cursor.toArray();
       res.send(bookings);
     });
