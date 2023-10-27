@@ -39,7 +39,7 @@ async function run() {
     const customerBookedCollection = client
       .db("elite-dwell-assist")
       .collection("customerBooking");
-    
+
     const maidSearchPostCollection = client
       .db("elite-dwell-assist")
       .collection("maidSearchPost");
@@ -98,6 +98,102 @@ async function run() {
         res.status(201).json({ message: "Customer added successfully" });
       } else {
         res.status(500).json({ message: "Failed to add customer" });
+      }
+    });
+
+    // Update an existing maid profile
+    app.put("/maid/:id", async (req, res) => {
+      try {
+        const maidId = req.params.id;
+        const updatedMaid = req.body;
+
+        // Remove the _id field from the updatedMaid object
+        delete updatedMaid._id;
+
+        const session = client.startSession();
+        session.startTransaction();
+
+        try {
+          // Update maid information
+          const resultMaid = await maidCollection.updateOne(
+            { _id: new ObjectId(maidId) },
+            { $set: updatedMaid },
+            { session }
+          );
+
+          if (resultMaid.modifiedCount === 1) {
+            await session.commitTransaction();
+            session.endSession();
+            res.json({ message: "Maid profile updated successfully" });
+          } else {
+            await session.abortTransaction();
+            session.endSession();
+            res.status(404).json({ message: "Maid not found" });
+          }
+        } catch (error) {
+          await session.abortTransaction();
+          session.endSession();
+          console.error(error);
+          res.status(500).json({ message: "Internal server error" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // Update an existing customer profile and user information
+    app.put("/customer/:id", async (req, res) => {
+      try {
+        const customerId = req.params.id;
+        const updatedCustomer = req.body;
+
+        // Remove the _id field from the updatedCustomer object
+        delete updatedCustomer._id;
+
+        const session = client.startSession();
+        session.startTransaction();
+
+        try {
+          // Update customer information
+          const resultCustomer = await customerCollection.updateOne(
+            { _id: new ObjectId(customerId) },
+            { $set: updatedCustomer },
+            { session }
+          );
+
+          // Update corresponding user information
+          const userQuery = { email: updatedCustomer.email };
+          const resultUser = await userCollection.updateOne(
+            userQuery,
+            { $set: updatedCustomer },
+            { session }
+          );
+
+          if (
+            resultCustomer.modifiedCount === 1 &&
+            resultUser.modifiedCount === 1
+          ) {
+            await session.commitTransaction();
+            session.endSession();
+            res.json({
+              message:
+                "Customer profile and user information updated successfully",
+            });
+          } else {
+            await session.abortTransaction();
+            session.endSession();
+            res.status(404).json({ message: "Customer or user not found" });
+          }
+        } catch (error) {
+          await session.abortTransaction();
+          session.endSession();
+          console.error(error);
+          res.status(500).json({ message: "Internal server error" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
       }
     });
 
