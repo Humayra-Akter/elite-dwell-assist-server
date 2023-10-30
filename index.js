@@ -43,6 +43,9 @@ async function run() {
     const maidSearchPostCollection = client
       .db("elite-dwell-assist")
       .collection("maidSearchPost");
+    const driverSearchPostCollection = client
+      .db("elite-dwell-assist")
+      .collection("driverSearchPost");
     const perDayMaidBookingCollection = client
       .db("elite-dwell-assist")
       .collection("perDayMaidBooking");
@@ -256,6 +259,22 @@ async function run() {
       try {
         const postData = req.body;
         const result = await maidSearchPostCollection.insertOne(postData);
+
+        if (result.insertedCount === 1) {
+          res.status(201).json({ message: "Booking saved successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to save booking" });
+        }
+      } catch (error) {
+        console.error("Booking error:", error);
+      }
+    });
+
+    // driverSearchPost
+    app.post("/driverSearchPost", async (req, res) => {
+      try {
+        const postData = req.body;
+        const result = await driverSearchPostCollection.insertOne(postData);
 
         if (result.insertedCount === 1) {
           res.status(201).json({ message: "Booking saved successfully" });
@@ -542,6 +561,14 @@ async function run() {
     app.get("/maidSearchPost", async (req, res) => {
       const query = {};
       const cursor = maidSearchPostCollection.find(query);
+      const bookings = await cursor.toArray();
+      res.send(bookings);
+    });
+
+    // driverSearchPost
+    app.get("driverSearchPost", async (req, res) => {
+      const query = {};
+      const cursor = driverSearchPostCollection.find(query);
       const bookings = await cursor.toArray();
       res.send(bookings);
     });
