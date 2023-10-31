@@ -39,6 +39,9 @@ async function run() {
     const customerBookedCollection = client
       .db("elite-dwell-assist")
       .collection("customerBooking");
+    const customerBookedByDriverCollection = client
+      .db("elite-dwell-assist")
+      .collection("customerBookingByDriver");
 
     const maidSearchPostCollection = client
       .db("elite-dwell-assist")
@@ -453,6 +456,23 @@ async function run() {
       }
     });
 
+    // bookings from driver to customer
+    app.post("/customerBookingByDriver", async (req, res) => {
+      try {
+        const booking = req.body;
+        const result = await customerBookedByDriverCollection.insertOne(
+          booking
+        );
+        if (result.insertedCount === 1) {
+          res.status(201).json({ message: "Booking created successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to create booking" });
+        }
+      } catch (error) {
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
     // individual booking information by email
     app.get("/bookings/:email", async (req, res) => {
       try {
@@ -495,6 +515,26 @@ async function run() {
         const customerEmail = req.params.email;
         const query = { customerEmail };
         const bookings = await customerBookedCollection.find(query).toArray();
+        if (!bookings || bookings.length === 0) {
+          return res
+            .status(404)
+            .json({ message: "No bookings found for the customer" });
+        }
+        res.json(bookings);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // individual booking information by email requested by driver to customer
+    app.get("/customerBookingByDriver/:email", async (req, res) => {
+      try {
+        const customerEmail = req.params.email;
+        const query = { customerEmail };
+        const bookings = await customerBookedByDriverCollection
+          .find(query)
+          .toArray();
         if (!bookings || bookings.length === 0) {
           return res
             .status(404)
@@ -557,6 +597,14 @@ async function run() {
       res.send(bookings);
     });
 
+    // bookings from maid to customer
+    app.get("/customerBookingByDriver", async (req, res) => {
+      const query = {};
+      const cursor = customerBookedByDriverCollection.find(query);
+      const bookings = await cursor.toArray();
+      res.send(bookings);
+    });
+
     // maidSearchPost
     app.get("/maidSearchPost", async (req, res) => {
       const query = {};
@@ -566,7 +614,7 @@ async function run() {
     });
 
     // driverSearchPost
-    app.get("driverSearchPost", async (req, res) => {
+    app.get("/driverSearchPost", async (req, res) => {
       const query = {};
       const cursor = driverSearchPostCollection.find(query);
       const bookings = await cursor.toArray();
