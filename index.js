@@ -49,6 +49,9 @@ async function run() {
     const driverSearchPostCollection = client
       .db("elite-dwell-assist")
       .collection("driverSearchPost");
+    const babysitterSearchPostCollection = client
+      .db("elite-dwell-assist")
+      .collection("babysitterSearchPost");
     const perDayMaidBookingCollection = client
       .db("elite-dwell-assist")
       .collection("perDayMaidBooking");
@@ -61,6 +64,9 @@ async function run() {
     const driverBookingsCollection = client
       .db("elite-dwell-assist")
       .collection("driverBookings");
+    const babysitterBookingsCollection = client
+      .db("elite-dwell-assist")
+      .collection("babysitterBookings");
 
     // admin post
     app.post("/admin", async (req, res) => {
@@ -135,6 +141,47 @@ async function run() {
             await session.abortTransaction();
             session.endSession();
             res.status(404).json({ message: "Maid not found" });
+          }
+        } catch (error) {
+          await session.abortTransaction();
+          session.endSession();
+          console.error(error);
+          res.status(500).json({ message: "Internal server error" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // Update an existing babysitter profile
+    app.put("/babysitter/:id", async (req, res) => {
+      try {
+        const babysitterId = req.params.id;
+        const updatedBabysitter = req.body;
+
+        // Remove the _id field from the updatedBabysitter object
+        delete updatedBabysitter._id;
+
+        const session = client.startSession();
+        session.startTransaction();
+
+        try {
+          // Update babysitter information
+          const resultBabysitter = await babysitterCollection.updateOne(
+            { _id: new ObjectId(babysitterId) },
+            { $set: updatedBabysitter },
+            { session }
+          );
+
+          if (resultBabysitter.modifiedCount === 1) {
+            await session.commitTransaction();
+            session.endSession();
+            res.json({ message: "Babysitter profile updated successfully" });
+          } else {
+            await session.abortTransaction();
+            session.endSession();
+            res.status(404).json({ message: "Babysitter not found" });
           }
         } catch (error) {
           await session.abortTransaction();
@@ -289,6 +336,22 @@ async function run() {
       }
     });
 
+    // babysitterSearchPost
+    app.post("/babysitterSearchPost", async (req, res) => {
+      try {
+        const postData = req.body;
+        const result = await babysitterSearchPostCollection.insertOne(postData);
+
+        if (result.insertedCount === 1) {
+          res.status(201).json({ message: "Booking saved successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to save booking" });
+        }
+      } catch (error) {
+        console.error("Booking error:", error);
+      }
+    });
+
     // perDayMaidBookings
     app.post("/perDayMaidBookings", async (req, res) => {
       try {
@@ -405,6 +468,24 @@ async function run() {
       }
     });
 
+    // babysitterBookings
+    app.post("/babysitterBookings", async (req, res) => {
+      try {
+        const booking = req.body;
+        booking.createdDate = new Date();
+        const result = await babysitterBookingsCollection.insertOne(booking);
+        if (result.insertedCount === 1) {
+          console.log(result);
+          res.status(201).json({ message: "Booking created successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to create booking" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to create booking" });
+      }
+    });
+
     // Delete a booking by ID
     app.delete("/bookings/:id", async (req, res) => {
       try {
@@ -428,6 +509,25 @@ async function run() {
         const bookingId = req.params.id;
         const objectId = new ObjectId(bookingId);
         const result = await driverBookingsCollection.deleteOne({
+          _id: objectId,
+        });
+        if (result.deletedCount === 1) {
+          res.json({ message: "Booking deleted successfully" });
+        } else {
+          res.status(404).json({ message: "Booking not found" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // Delete a babysitterBookings by ID
+    app.delete("/babysitterBookings/:id", async (req, res) => {
+      try {
+        const bookingId = req.params.id;
+        const objectId = new ObjectId(bookingId);
+        const result = await babysitterBookingsCollection.deleteOne({
           _id: objectId,
         });
         if (result.deletedCount === 1) {
@@ -497,6 +597,26 @@ async function run() {
         const maidEmail = req.params.email;
         const query = { maidEmail };
         const bookings = await driverBookingsCollection.find(query).toArray();
+        if (!bookings || bookings.length === 0) {
+          return res
+            .status(404)
+            .json({ message: "No bookings found for the maid" });
+        }
+        res.json(bookings);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // individual babysitterBookings information by email
+    app.get("/babysitterBookings/:email", async (req, res) => {
+      try {
+        const maidEmail = req.params.email;
+        const query = { maidEmail };
+        const bookings = await babysitterBookingsCollection
+          .find(query)
+          .toArray();
         if (!bookings || bookings.length === 0) {
           return res
             .status(404)
@@ -589,6 +709,14 @@ async function run() {
       res.send(bookings);
     });
 
+    // babysitterBookings
+    app.get("/babysitterBookings", async (req, res) => {
+      const query = {};
+      const cursor = babysitterBookingsCollection.find(query);
+      const bookings = await cursor.toArray();
+      res.send(bookings);
+    });
+
     // bookings from maid to customer
     app.get("/customerBooked", async (req, res) => {
       const query = {};
@@ -617,6 +745,14 @@ async function run() {
     app.get("/driverSearchPost", async (req, res) => {
       const query = {};
       const cursor = driverSearchPostCollection.find(query);
+      const bookings = await cursor.toArray();
+      res.send(bookings);
+    });
+
+    // babysitterSearchPost
+    app.get("/babysitterSearchPost", async (req, res) => {
+      const query = {};
+      const cursor = babysitterSearchPostCollection.find(query);
       const bookings = await cursor.toArray();
       res.send(bookings);
     });
