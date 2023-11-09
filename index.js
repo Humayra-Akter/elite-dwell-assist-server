@@ -58,6 +58,15 @@ async function run() {
     const tvBillCollection = client
       .db("elite-dwell-assist")
       .collection("tvBill");
+    const ovenBillCollection = client
+      .db("elite-dwell-assist")
+      .collection("ovenBill");
+    const wmBillCollection = client
+      .db("elite-dwell-assist")
+      .collection("wmBill");
+    const rfBillCollection = client
+      .db("elite-dwell-assist")
+      .collection("rfBill");
     const bookingCollection = client
       .db("elite-dwell-assist")
       .collection("bookings");
@@ -392,6 +401,77 @@ async function run() {
       res.send(tvBill);
     });
 
+    // wmBill
+    app.post("/wmBill", async (req, res) => {
+      try {
+        const bookingData = req.body;
+        const result = await wmBillCollection.insertOne(bookingData);
+
+        if (result.insertedCount === 1) {
+          res.status(201).json({ message: "Booking saved successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to save booking" });
+        }
+      } catch (error) {
+        console.error("Booking error:", error);
+      }
+    });
+
+    //wmBill get
+    app.get("/wmBill", async (req, res) => {
+      const query = {};
+      const cursor = wmBillCollection.find(query);
+      const wmBill = await cursor.toArray();
+      res.send(wmBill);
+    });
+
+    // rfBill
+    app.post("/rfBill", async (req, res) => {
+      try {
+        const bookingData = req.body;
+        const result = await rfBillCollection.insertOne(bookingData);
+
+        if (result.insertedCount === 1) {
+          res.status(201).json({ message: "Booking saved successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to save booking" });
+        }
+      } catch (error) {
+        console.error("Booking error:", error);
+      }
+    });
+
+    //rfBill get
+    app.get("/rfBill", async (req, res) => {
+      const query = {};
+      const cursor = rfBillCollection.find(query);
+      const rfBill = await cursor.toArray();
+      res.send(rfBill);
+    });
+
+    // ovenBill
+    app.post("/ovenBill", async (req, res) => {
+      try {
+        const bookingData = req.body;
+        const result = await ovenBillCollection.insertOne(bookingData);
+
+        if (result.insertedCount === 1) {
+          res.status(201).json({ message: "Booking saved successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to save booking" });
+        }
+      } catch (error) {
+        console.error("Booking error:", error);
+      }
+    });
+
+    //ovenBill get
+    app.get("/ovenBill", async (req, res) => {
+      const query = {};
+      const cursor = ovenBillCollection.find(query);
+      const ovenBill = await cursor.toArray();
+      res.send(ovenBill);
+    });
     //review post
     app.post("/reviews", async (req, res) => {
       try {
