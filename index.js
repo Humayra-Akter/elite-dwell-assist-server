@@ -15,6 +15,25 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
 });
 
+// Add this function to your existing code
+async function fetchMaidId(bookingId) {
+  try {
+    const bookingObjectId = new ObjectId(bookingId);
+    const booking = await bookingCollection.findOne({
+      _id: bookingObjectId,
+    });
+
+    if (booking && booking.maidId) {
+      return booking.maidId;
+    } else {
+      throw new Error("Maid ID not found for the given booking");
+    }
+  } catch (error) {
+    console.error(error);
+    throw new Error("Error fetching Maid ID");
+  }
+}
+
 async function run() {
   try {
     await client.connect();
@@ -42,7 +61,9 @@ async function run() {
     const customerBookedByDriverCollection = client
       .db("elite-dwell-assist")
       .collection("customerBookingByDriver");
-
+    const customerBookedByBabysitterCollection = client
+      .db("elite-dwell-assist")
+      .collection("customerBookingByBabysitter");
     const maidSearchPostCollection = client
       .db("elite-dwell-assist")
       .collection("maidSearchPost");
@@ -290,18 +311,44 @@ async function run() {
       res.send(babysitters);
     });
 
-    //maid per day acknowledgeBooking post
+    // maid per day and tvBill acknowledgeBooking post
     app.post("/acknowledgeBooking", async (req, res) => {
-      const bookingId = req.body;
-      const result = await acknowledgeBookingCollection.insertOne(bookingId);
-      if (result.insertedCount === 1) {
-        const deleteResult = await perDayMaidBookingCollection.deleteOne({
-          _id: booking._id,
+      try {
+        const { _id, acknowledgeBookingType } = req.body.booking;
+        const result = await acknowledgeBookingCollection.insertOne({
+          ...req.body.booking,
+          acknowledgeBookingType,
         });
-        res.send(result);
-        res.status(201).json({ message: "Maid added successfully" });
-      } else {
-        res.status(500).json({ message: "Failed to add maid" });
+
+        if (result.insertedCount === 1) {
+          let deleteResult;
+
+          if (acknowledgeBookingType === "tvBill") {
+            // Handle TV bill acknowledgment logic
+            // Assuming there's a collection named tvBillCollection
+            deleteResult = await tvBillCollection.deleteOne({
+              _id: ObjectId(_id),
+            });
+          } else {
+            // Handle per day maid booking acknowledgment logic
+            deleteResult = await perDayMaidBookingCollection.deleteOne({
+              _id: ObjectId(_id),
+            });
+          }
+
+          if (deleteResult.deletedCount === 1) {
+            res
+              .status(201)
+              .json({ message: "AcknowledgeBooking added successfully" });
+          } else {
+            res.status(500).json({ message: "Failed to delete booking" });
+          }
+        } else {
+          res.status(500).json({ message: "Failed to add acknowledgeBooking" });
+        }
+      } catch (error) {
+        console.error("AcknowledgeBooking error:", error);
+        res.status(500).json({ message: "Failed to add acknowledgeBooking" });
       }
     });
 
@@ -311,6 +358,19 @@ async function run() {
       const cursor = acknowledgeBookingCollection.find(query);
       const acknowledgeBooking = await cursor.toArray();
       res.send(acknowledgeBooking);
+    });
+
+    // Delete AcknowledgeBooking from UI (without removing from backend)
+    app.delete("/acknowledgeBooking/:id", async (req, res) => {
+      try {
+        const bookingId = req.params.id;
+        res.json({
+          message: "AcknowledgeBooking deleted from UI successfully",
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
     });
 
     // maidSearchPost
@@ -512,6 +572,26 @@ async function run() {
       res.send(reviews);
     });
 
+    //review per email get
+    app.get("/reviews/:maidId", async (req, res) => {
+      try {
+        const maidId = req.params.maidId;
+        const query = { maidId };
+        const reviews = await reviewCollection.find(query).toArray();
+
+        if (!reviews || reviews.length === 0) {
+          return res
+            .status(404)
+            .json({ message: "No reviews found for the maid" });
+        }
+
+        res.json(reviews);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
     // bookings
     app.post("/bookings", async (req, res) => {
       try {
@@ -653,6 +733,23 @@ async function run() {
       }
     });
 
+    // bookings from babysitter to customer
+    app.post("/customerBookingByBabysitter", async (req, res) => {
+      try {
+        const booking = req.body;
+        const result = await customerBookedByBabysitterCollection.insertOne(
+          booking
+        );
+        if (result.insertedCount === 1) {
+          res.status(201).json({ message: "Booking created successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to create booking" });
+        }
+      } catch (error) {
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
     // individual booking information by email
     app.get("/bookings/:email", async (req, res) => {
       try {
@@ -709,6 +806,36 @@ async function run() {
       }
     });
 
+    // get individual booking information by maid email
+    app.get("/bookings/maid/:email", async (req, res) => {
+      try {
+        const maidEmail = req.params.email;
+        const query = { maidEmail };
+        const bookings = await bookingCollection.find(query).toArray();
+        if (!bookings || bookings.length === 0) {
+          return res
+            .status(404)
+            .json({ message: "No bookings found for the maid" });
+        }
+        res.json(bookings);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // maid individual get
+    app.get("/getMaidId/:bookingId", async (req, res) => {
+      try {
+        const bookingId = req.params.bookingId;
+        const maidId = await fetchMaidId(bookingId);
+        res.json({ maidId });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
     // individual booking information by email requested by maid to customer
     app.get("/customerBooked/:email", async (req, res) => {
       try {
@@ -733,6 +860,26 @@ async function run() {
         const customerEmail = req.params.email;
         const query = { customerEmail };
         const bookings = await customerBookedByDriverCollection
+          .find(query)
+          .toArray();
+        if (!bookings || bookings.length === 0) {
+          return res
+            .status(404)
+            .json({ message: "No bookings found for the customer" });
+        }
+        res.json(bookings);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    }); 
+    
+    // individual booking information by email requested by babysitter to customer
+    app.get("/customerBookingByBabysitter/:email", async (req, res) => {
+      try {
+        const customerEmail = req.params.email;
+        const query = { customerEmail };
+        const bookings = await customerBookedByBabysitterCollection
           .find(query)
           .toArray();
         if (!bookings || bookings.length === 0) {
@@ -812,6 +959,13 @@ async function run() {
       const bookings = await cursor.toArray();
       res.send(bookings);
     });
+    // bookings from maid to customer
+    app.get("/customerBookingByBabysitter", async (req, res) => {
+      const query = {};
+      const cursor = customerBookedByBabysitterCollection.find(query);
+      const bookings = await cursor.toArray();
+      res.send(bookings);
+    });
 
     // maidSearchPost
     app.get("/maidSearchPost", async (req, res) => {
@@ -875,13 +1029,6 @@ async function run() {
       const cursor = driverCollection.find(query);
       const drivers = await cursor.toArray();
       res.send(drivers);
-    });
-
-    // maid individual get
-    app.get("/getMaidId/:bookingId", async (req, res) => {
-      const bookingId = req.params.bookingId;
-      const maidId = await fetchMaidId(bookingId);
-      res.json({ maidId });
     });
   } finally {
   }
