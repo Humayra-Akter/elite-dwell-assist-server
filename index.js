@@ -532,35 +532,15 @@ async function run() {
       const ovenBill = await cursor.toArray();
       res.send(ovenBill);
     });
-    //review post
-    app.post("/reviews", async (req, res) => {
-      try {
-        const { userEmail, maidId, rating, reviewText } = req.body;
-        const existingReview = await reviewCollection.findOne({
-          userEmail,
-          maidId,
-        });
-        if (existingReview) {
-          res
-            .status(400)
-            .json({ message: "You have already reviewed this maid." });
-          return;
-        }
-        const result = await reviewCollection.insertOne({
-          userEmail,
-          maidId,
-          rating,
-          reviewText,
-        });
 
-        if (result.insertedCount === 1) {
-          res.status(201).json({ message: "Review submitted successfully" });
-        } else {
-          res.status(500).json({ message: "Failed to submit review" });
-        }
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Failed to submit review" });
+    // reviews post
+    app.post("/reviews", async (req, res) => {
+      const review = req.body;
+      const result = await reviewCollection.insertOne(review);
+      if (result.insertedCount === 1) {
+        res.status(201).json({ message: "review added successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to add review" });
       }
     });
 
@@ -573,7 +553,7 @@ async function run() {
     });
 
     //review per email get
-    app.get("/reviews/:maidId", async (req, res) => {
+    app.get("/reviews/:email", async (req, res) => {
       try {
         const maidId = req.params.maidId;
         const query = { maidId };
@@ -872,8 +852,8 @@ async function run() {
         console.error(error);
         res.status(500).json({ message: "Internal server error" });
       }
-    }); 
-    
+    });
+
     // individual booking information by email requested by babysitter to customer
     app.get("/customerBookingByBabysitter/:email", async (req, res) => {
       try {
@@ -904,6 +884,36 @@ async function run() {
           return res.status(404).json({ message: "Maid not found" });
         }
         res.json(maid);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+    // individual maid information by email
+    app.get("/driver/:email", async (req, res) => {
+      try {
+        const driverEmail = req.params.email;
+        const query = { email: driverEmail };
+        const driver = await driverCollection.findOne(query);
+        if (!driver) {
+          return res.status(404).json({ message: "Driver not found" });
+        }
+        res.json(driver);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+    // individual maid information by email
+    app.get("/babysitter/:email", async (req, res) => {
+      try {
+        const babysitterEmail = req.params.email;
+        const query = { email: babysitterEmail };
+        const babysitter = await babysitterCollection.findOne(query);
+        if (!babysitter) {
+          return res.status(404).json({ message: "Babysitter not found" });
+        }
+        res.json(babysitter);
       } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Internal server error" });
