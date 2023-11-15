@@ -769,15 +769,15 @@ async function run() {
     // individual babysitterBookings information by email
     app.get("/babysitterBookings/:email", async (req, res) => {
       try {
-        const maidEmail = req.params.email;
-        const query = { maidEmail };
+        const babysitterEmail = req.params.email;
+        const query = { babysitterEmail };
         const bookings = await babysitterBookingsCollection
           .find(query)
           .toArray();
         if (!bookings || bookings.length === 0) {
           return res
             .status(404)
-            .json({ message: "No bookings found for the maid" });
+            .json({ message: "No bookings found for the babysitter" });
         }
         res.json(bookings);
       } catch (error) {
