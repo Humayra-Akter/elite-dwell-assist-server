@@ -9,13 +9,12 @@ app.use(cors());
 app.use(express.json());
 
 const uri =
-  "mongodb+srv://eliteAdmin:kz7fQgCtjVgoPNYn@cluster0.guksi.mongodb.net/elite-dwell-assist?retryWrites=true&w=majority";
+  "mongodb+srv://humayraakter25:gxh2yK96dm8T6xFV@cluster0.q18ojdg.mongodb.net/elite-dwell-assist?retryWrites=true&w=majority";
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
-// Add this function to your existing code
 async function fetchMaidId(bookingId) {
   try {
     const bookingObjectId = new ObjectId(bookingId);
