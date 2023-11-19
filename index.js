@@ -224,6 +224,47 @@ async function run() {
       }
     });
 
+    // Update an existing driver profile
+    app.put("/driver/:id", async (req, res) => {
+      try {
+        const driverId = req.params.id;
+        const updatedDriver = req.body;
+
+        // Remove the _id field from the updatedDriver object
+        delete updatedDriver._id;
+
+        const session = client.startSession();
+        session.startTransaction();
+
+        try {
+          // Update driver information
+          const resultDriver = await driverCollection.updateOne(
+            { _id: new ObjectId(driverId) },
+            { $set: updatedDriver },
+            { session }
+          );
+
+          if (resultDriver.modifiedCount === 1) {
+            await session.commitTransaction();
+            session.endSession();
+            res.json({ message: "driver profile updated successfully" });
+          } else {
+            await session.abortTransaction();
+            session.endSession();
+            res.status(404).json({ message: "driver not found" });
+          }
+        } catch (error) {
+          await session.abortTransaction();
+          session.endSession();
+          console.error(error);
+          res.status(500).json({ message: "Internal server error" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
     // Update an existing customer profile and user information
     app.put("/customer/:id", async (req, res) => {
       try {
