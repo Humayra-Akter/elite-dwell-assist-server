@@ -584,25 +584,41 @@ async function run() {
       }
     });
 
-    //review get
+    // //review get
     app.get("/reviews", async (req, res) => {
       const query = {};
       const cursor = reviewCollection.find(query);
       const reviews = await cursor.toArray();
       res.send(reviews);
     });
+    // app.get("/reviews", async (req, res) => {
+    //   try {
+    //     const { userEmail, reviewType } = req.query;
+    //     const query = { userEmail, reviewType };
+    //     const reviews = await reviewCollection.find(query).toArray();
+
+    //     if (!reviews || reviews.length === 0) {
+    //       return res
+    //         .status(404)
+    //         .json({ message: "No reviews found for the user" });
+    //     }
+
+    //     res.json(reviews);
+    //   } catch (error) {
+    //     console.error(error);
+    //     res.status(500).json({ message: "Internal server error" });
+    //   }
+    // });
 
     //review per email get
     app.get("/reviews/:email", async (req, res) => {
       try {
-        const maidId = req.params.maidId;
-        const query = { maidId };
+        const email = req.params.email; // Updated parameter name
+        const query = { email };
         const reviews = await reviewCollection.find(query).toArray();
 
         if (!reviews || reviews.length === 0) {
-          return res
-            .status(404)
-            .json({ message: "No reviews found for the maid" });
+          return res.status(404).json({ message: "No reviews found" });
         }
 
         res.json(reviews);
