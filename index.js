@@ -584,31 +584,32 @@ async function run() {
       }
     });
 
-    // //review get
-    app.get("/reviews", async (req, res) => {
+    //review get
+    app.get("/review", async (req, res) => {
       const query = {};
       const cursor = reviewCollection.find(query);
       const reviews = await cursor.toArray();
       res.send(reviews);
     });
-    // app.get("/reviews", async (req, res) => {
-    //   try {
-    //     const { userEmail, reviewType } = req.query;
-    //     const query = { userEmail, reviewType };
-    //     const reviews = await reviewCollection.find(query).toArray();
 
-    //     if (!reviews || reviews.length === 0) {
-    //       return res
-    //         .status(404)
-    //         .json({ message: "No reviews found for the user" });
-    //     }
+    app.get("/reviews", async (req, res) => {
+      try {
+        const { userEmail, reviewType } = req.query;
+        const query = { userEmail, reviewType };
+        const reviews = await reviewCollection.find(query).toArray();
 
-    //     res.json(reviews);
-    //   } catch (error) {
-    //     console.error(error);
-    //     res.status(500).json({ message: "Internal server error" });
-    //   }
-    // });
+        if (!reviews || reviews.length === 0) {
+          return res
+            .status(404)
+            .json({ message: "No reviews found for the user" });
+        }
+
+        res.json(reviews);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
 
     //review per email get
     app.get("/reviews/:email", async (req, res) => {
@@ -624,6 +625,30 @@ async function run() {
         res.json(reviews);
       } catch (error) {
         console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // Endpoint to post average rating for the logged maid
+    app.post("/averageRating", async (req, res) => {
+      try {
+        const { maidEmail, averageRating } = req.body;
+
+        // Update the maid document with the new average rating
+        const result = await maidCollection.updateOne(
+          { email: maidEmail },
+          { $set: { averageRating } }
+        );
+
+        if (result.modifiedCount === 1) {
+          res
+            .status(200)
+            .json({ message: "Average rating updated successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to update average rating" });
+        }
+      } catch (error) {
+        console.error("Error updating average rating:", error);
         res.status(500).json({ message: "Internal server error" });
       }
     });
