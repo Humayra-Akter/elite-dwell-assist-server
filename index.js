@@ -653,6 +653,54 @@ async function run() {
       }
     });
 
+    // Endpoint to post average rating for the logged driver
+    app.post("/averageRatingDriver", async (req, res) => {
+      try {
+        const { driverEmail, averageRating } = req.body;
+
+        // Update the driver document with the new average rating
+        const result = await driverCollection.updateOne(
+          { email: driverEmail },
+          { $set: { averageRating } }
+        );
+
+        if (result.modifiedCount === 1) {
+          res
+            .status(200)
+            .json({ message: "Average rating updated successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to update average rating" });
+        }
+      } catch (error) {
+        console.error("Error updating average rating:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // Endpoint to post average rating for the logged babysitter
+    app.post("/averageRatingBabysitter", async (req, res) => {
+      try {
+        const { babysitterEmail, averageRating } = req.body;
+
+        // Update the babysitter document with the new average rating
+        const result = await babysitterCollection.updateOne(
+          { email: babysitterEmail },
+          { $set: { averageRating } }
+        );
+
+        if (result.modifiedCount === 1) {
+          res
+            .status(200)
+            .json({ message: "Average rating updated successfully" });
+        } else {
+          res.status(500).json({ message: "Failed to update average rating" });
+        }
+      } catch (error) {
+        console.error("Error updating average rating:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
     // bookings
     app.post("/bookings", async (req, res) => {
       try {
