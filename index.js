@@ -35,7 +35,7 @@ async function fetchMaidId(bookingId) {
 
 async function run() {
   try {
-    await client.connect();
+    //await client.connect();
     const customerCollection = client
       .db("elite-dwell-assist")
       .collection("customer");
