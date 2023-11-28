@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs14.x",
+      "includeFiles": "index.js"
+    }
+  },
+  "routes": [{ "src": "/(.*)", "dest": "/index.js" }]
+}
