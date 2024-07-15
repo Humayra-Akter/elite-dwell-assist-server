@@ -10,10 +10,7 @@ app.use(express.json());
 
 const uri =
   "mongodb+srv://humayraakter25:gxh2yK96dm8T6xFV@cluster0.q18ojdg.mongodb.net/elite-dwell-assist?retryWrites=true&w=majority";
-const client = new MongoClient(uri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+const client = new MongoClient(uri);
 
 async function fetchMaidId(bookingId) {
   try {
