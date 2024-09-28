@@ -1166,6 +1166,11 @@ async function run() {
       const drivers = await cursor.toArray();
       res.send(drivers);
     });
+
+    //route get
+    app.get("/", async (req, res) => {
+      res.send("Hello from Elite Dwell Assist");
+    });
   } finally {
   }
 }
